@@ -1,0 +1,1779 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>RetroCam - Dedicated Camera Selector & Clean HUD</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      user-select: none;
+      -webkit-tap-highlight-color: transparent;
+    }
+    body {
+      background-color: #070709;
+      color: #e0e0e0;
+      font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', Roboto, 'Courier New', monospace;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      overflow: hidden;
+    }
+
+    /* Device Chassis: Clean, Spacious, Sleek */
+    #phone-chassis {
+      width: 420px;
+      height: 890px;
+      max-height: 96vh;
+      background: #0D0E12;
+      border: 2px solid #22232B;
+      border-radius: 40px;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      position: relative;
+      box-shadow: 0 25px 70px rgba(0,0,0,0.9), 0 0 0 1px #16171E;
+    }
+
+    /* 1. TOP MINIMAL BAR */
+    #top-bar {
+      height: 52px;
+      padding: 0 20px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: #0D0E12;
+      z-index: 20;
+    }
+    .brand-title {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .brand-title .logo {
+      font-size: 13px;
+      font-weight: 900;
+      letter-spacing: 1.5px;
+      color: #FFF;
+      font-family: 'Courier New', monospace;
+    }
+    .brand-title .badge {
+      font-size: 9px;
+      font-weight: 700;
+      padding: 2px 6px;
+      border-radius: 4px;
+      background: rgba(255, 179, 38, 0.15);
+      color: #FFB326;
+      border: 1px solid rgba(255, 179, 38, 0.3);
+      font-family: 'Courier New', monospace;
+      cursor: pointer;
+    }
+    .top-actions {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+    .icon-action-btn {
+      background: none;
+      border: none;
+      color: #8E8E98;
+      font-size: 16px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: color 0.15s, transform 0.1s;
+      padding: 6px;
+      border-radius: 50%;
+    }
+    .icon-action-btn:hover {
+      color: #FFB326;
+      background: rgba(255, 255, 255, 0.05);
+    }
+    .icon-action-btn:active {
+      transform: scale(0.92);
+    }
+
+    /* 2. VIEWFINDER */
+    #viewfinder-container {
+      flex: 1;
+      position: relative;
+      background: #000;
+      margin: 0 12px;
+      border-radius: 20px;
+      overflow: hidden;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border: 1px solid #1C1D24;
+      cursor: crosshair;
+    }
+
+    #video-wrapper {
+      width: 100%;
+      height: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: transform 0.25s cubic-bezier(0.2, 0, 0.2, 1);
+    }
+
+    #webcam-video, #canvas-feed {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+      transition: filter 0.15s ease;
+    }
+
+    /* Letterbox Mattes */
+    .letterbox-matte {
+      position: absolute;
+      left: 0;
+      right: 0;
+      background: rgba(4, 4, 6, 0.96);
+      z-index: 5;
+      pointer-events: none;
+      transition: height 0.2s ease;
+    }
+    #letterbox-top { top: 0; height: 26px; }
+    #letterbox-bottom { bottom: 0; height: 26px; }
+
+    /* Scanlines */
+    #scanlines {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      z-index: 6;
+      background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.4) 50%);
+      background-size: 100% 4px;
+      opacity: 0.35;
+    }
+
+    /* Film Grain Canvas */
+    #grain-canvas {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      z-index: 7;
+      opacity: 0.6;
+    }
+
+    /* Recording border glow */
+    #rec-pulse-border {
+      position: absolute;
+      inset: 0;
+      border: 3px solid #FF2E2E;
+      border-radius: 20px;
+      pointer-events: none;
+      z-index: 15;
+      display: none;
+      box-shadow: inset 0 0 20px rgba(255, 46, 46, 0.4);
+      animation: pulse 1.2s infinite alternate;
+    }
+    @keyframes pulse {
+      0% { opacity: 0.6; }
+      100% { opacity: 1; }
+    }
+
+    /* Floating Minimal OSD */
+    #floating-hud {
+      position: absolute;
+      inset: 0;
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      z-index: 20;
+      pointer-events: none;
+      font-family: 'Courier New', monospace;
+      color: #FFB326;
+      text-shadow: 1px 1px 3px rgba(0, 0, 0, 0.9);
+    }
+    #floating-hud * {
+      pointer-events: auto;
+    }
+
+    .hud-row-top, .hud-row-bottom {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .hud-status-chip {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      background: rgba(10, 10, 14, 0.65);
+      backdrop-filter: blur(8px);
+      padding: 5px 10px;
+      border-radius: 12px;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      cursor: pointer;
+    }
+    .hud-dot-rec {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #FF2E2E;
+      animation: blink 1s infinite alternate;
+    }
+    .hud-dot-stby {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #00E676;
+    }
+    @keyframes blink {
+      0% { opacity: 0.2; }
+      100% { opacity: 1; }
+    }
+    .hud-text {
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.5px;
+    }
+
+    .hud-tag {
+      font-size: 10px;
+      font-weight: 700;
+      background: rgba(10, 10, 14, 0.65);
+      backdrop-filter: blur(8px);
+      padding: 5px 10px;
+      border-radius: 12px;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      color: #AAA;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+    .hud-tag:hover {
+      color: #FFB326;
+      border-color: #FFB326;
+    }
+
+    .hud-info-group {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .hud-date {
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.5px;
+      background: rgba(10, 10, 14, 0.65);
+      backdrop-filter: blur(8px);
+      padding: 4px 8px;
+      border-radius: 8px;
+      cursor: pointer;
+    }
+
+    /* TAP-TO-FOCUS & CONTRAST/EXPOSURE SLIDER */
+    #focus-container {
+      position: absolute;
+      pointer-events: auto;
+      z-index: 12;
+      display: none;
+      transform: translate(-50%, -50%);
+      transition: opacity 0.3s ease;
+    }
+
+    .focus-reticle-box {
+      width: 64px;
+      height: 64px;
+      border: 1.5px solid #FFB326;
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 0 14px rgba(255, 179, 38, 0.35);
+      animation: focus-pop 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+      position: relative;
+    }
+    @keyframes focus-pop {
+      0% { transform: scale(1.3); opacity: 0.3; }
+      100% { transform: scale(1); opacity: 1; }
+    }
+    .focus-cross {
+      font-size: 16px;
+      color: #FFB326;
+      font-weight: bold;
+    }
+
+    .focus-slider-rail {
+      position: absolute;
+      left: 76px;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 32px;
+      height: 110px;
+      background: rgba(13, 14, 18, 0.88);
+      backdrop-filter: blur(12px);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      border-radius: 16px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: space-between;
+      padding: 8px 4px;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.6);
+      cursor: ns-resize;
+    }
+    .slider-sun {
+      font-size: 12px;
+      color: #FFB326;
+    }
+    .slider-track {
+      width: 3px;
+      height: 54px;
+      background: rgba(255, 255, 255, 0.15);
+      border-radius: 2px;
+      position: relative;
+    }
+    .slider-thumb {
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      background: #FFB326;
+      box-shadow: 0 0 6px rgba(255, 179, 38, 0.8);
+      position: absolute;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      top: 50%;
+      pointer-events: none;
+      transition: top 0.05s ease-out;
+    }
+    .slider-val {
+      font-size: 9px;
+      font-weight: 700;
+      color: #FFF;
+      font-family: 'Courier New', monospace;
+    }
+
+    /* Shutter Flash */
+    #shutter-flash {
+      position: absolute;
+      inset: 0;
+      background: #FFF;
+      z-index: 30;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.1s ease-out;
+    }
+
+    /* 3. SPACIOUS ERGONOMIC CONTROLS PANEL (No crowded carousel!) */
+    #controls-container {
+      background: #0D0E12;
+      padding: 16px 24px 30px;
+      display: flex;
+      flex-direction: column;
+      gap: 18px;
+      z-index: 20;
+    }
+
+    .quick-toggles-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 8px;
+    }
+    .pill-btn {
+      background: #14151C;
+      border: 1px solid #242530;
+      color: #9A9BA6;
+      border-radius: 20px;
+      padding: 8px 14px;
+      font-size: 11px;
+      font-weight: 700;
+      font-family: 'Courier New', monospace;
+      cursor: pointer;
+      transition: all 0.15s ease;
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
+    .pill-btn:hover {
+      color: #FFF;
+      border-color: #3C3D4D;
+    }
+    .pill-btn.active {
+      color: #FFB326;
+      border-color: #FFB326;
+      background: rgba(255, 179, 38, 0.12);
+    }
+    .camera-select-pill {
+      background: rgba(255, 179, 38, 0.15);
+      border: 1.5px solid #FFB326;
+      color: #FFB326;
+      font-weight: 800;
+    }
+
+    .main-deck-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 4px 6px;
+    }
+
+    .zoom-unit {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 4px;
+    }
+    .zoom-indicator {
+      font-size: 10px;
+      font-weight: 700;
+      color: #888;
+      font-family: 'Courier New', monospace;
+    }
+    .zoom-pill {
+      display: flex;
+      background: #14151C;
+      border: 1px solid #262734;
+      border-radius: 24px;
+      padding: 3px;
+      gap: 4px;
+    }
+    .zoom-step-btn {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      background: #1A1B24;
+      border: none;
+      color: #FFF;
+      font-size: 12px;
+      font-weight: 800;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.1s;
+    }
+    .zoom-step-btn:hover {
+      background: #282936;
+      color: #FFB326;
+    }
+    .zoom-step-btn:active {
+      transform: scale(0.92);
+      background: #FFB326;
+      color: #000;
+    }
+
+    .shutter-ring {
+      width: 80px;
+      height: 80px;
+      border-radius: 50%;
+      background: #161720;
+      border: 3px solid #2B2C3A;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      box-shadow: 0 6px 20px rgba(0, 0, 0, 0.6), inset 0 2px 4px rgba(255,255,255,0.05);
+      transition: transform 0.08s ease, border-color 0.2s ease;
+    }
+    .shutter-ring:active {
+      transform: scale(0.94);
+    }
+    .shutter-ring:hover {
+      border-color: #404154;
+    }
+    .shutter-core-photo {
+      width: 60px;
+      height: 60px;
+      border-radius: 50%;
+      background: #F0F0F5;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+      transition: all 0.15s ease;
+    }
+    .shutter-core-video {
+      width: 60px;
+      height: 60px;
+      border-radius: 50%;
+      background: #FF2E2E;
+      box-shadow: 0 0 14px rgba(255, 46, 46, 0.6);
+      transition: all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    }
+    .shutter-core-video.recording {
+      width: 32px;
+      height: 32px;
+      border-radius: 8px;
+      background: #FF2E2E;
+      box-shadow: 0 0 20px #FF2E2E;
+    }
+
+    .deck-right-unit {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 10px;
+    }
+    .mode-pill-toggle {
+      display: flex;
+      background: #14151C;
+      border: 1px solid #262734;
+      border-radius: 18px;
+      padding: 3px;
+    }
+    .mode-option-btn {
+      background: none;
+      border: none;
+      color: #888;
+      font-size: 10px;
+      font-weight: 700;
+      padding: 5px 10px;
+      border-radius: 14px;
+      cursor: pointer;
+      font-family: 'Courier New', monospace;
+      transition: all 0.15s;
+    }
+    .mode-option-btn.active {
+      background: #FFB326;
+      color: #000;
+      font-weight: 800;
+    }
+    .gallery-preview-btn {
+      width: 42px;
+      height: 42px;
+      border-radius: 12px;
+      background: #181922;
+      border: 1px solid #2B2C3A;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 18px;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+    .gallery-preview-btn:hover {
+      border-color: #FFB326;
+      transform: scale(1.05);
+    }
+
+    /* 4. DEDICATED CAMERA SELECTOR PAGE (Slide-Up Gear Sheet) */
+    .sheet-overlay {
+      position: absolute;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.75);
+      backdrop-filter: blur(10px);
+      z-index: 100;
+      display: none;
+      align-items: flex-end;
+    }
+    .sheet-card {
+      width: 100%;
+      height: 88%;
+      background: #101117;
+      border-top: 1px solid #262736;
+      border-radius: 28px 28px 0 0;
+      display: flex;
+      flex-direction: column;
+      box-shadow: 0 -12px 50px rgba(0,0,0,0.85);
+      animation: slide-up 0.25s cubic-bezier(0.1, 0.9, 0.2, 1);
+    }
+    @keyframes slide-up {
+      0% { transform: translateY(100%); }
+      100% { transform: translateY(0); }
+    }
+
+    .sheet-handle-bar {
+      width: 42px;
+      height: 4px;
+      background: #363748;
+      border-radius: 2px;
+      margin: 10px auto 4px;
+      flex-shrink: 0;
+    }
+    .sheet-header {
+      padding: 10px 20px 8px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-shrink: 0;
+    }
+    .sheet-title-group {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .sheet-title-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #FFB326;
+    }
+    .sheet-title {
+      font-size: 12px;
+      font-weight: 800;
+      color: #FFF;
+      letter-spacing: 0.5px;
+      font-family: 'Courier New', monospace;
+    }
+    .sheet-actions {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .btn-reset {
+      background: #1A1B24;
+      border: 1px solid #2C2D3C;
+      color: #AAA;
+      border-radius: 8px;
+      padding: 4px 10px;
+      font-size: 10px;
+      font-weight: 700;
+      font-family: 'Courier New', monospace;
+      cursor: pointer;
+    }
+    .btn-reset:hover {
+      color: #FFF;
+      border-color: #FFB326;
+    }
+    .sheet-close-btn {
+      background: none;
+      border: none;
+      color: #888;
+      font-size: 18px;
+      cursor: pointer;
+      padding: 4px;
+    }
+    .sheet-close-btn:hover { color: #FFF; }
+
+    /* Category Nav Strip (Settings) */
+    .sheet-tabs-nav {
+      display: flex;
+      gap: 8px;
+      padding: 6px 18px 10px;
+      overflow-x: auto;
+      scrollbar-width: none;
+      border-bottom: 1px solid #1E1F2A;
+      flex-shrink: 0;
+    }
+    .sheet-tabs-nav::-webkit-scrollbar { display: none; }
+    .nav-tab-pill {
+      background: #161720;
+      border: 1px solid #262734;
+      border-radius: 12px;
+      padding: 6px 12px;
+      color: #999;
+      font-size: 10px;
+      font-weight: 700;
+      font-family: 'Courier New', monospace;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: all 0.15s ease;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .nav-tab-pill.active {
+      background: rgba(255, 179, 38, 0.15);
+      border-color: #FFB326;
+      color: #FFB326;
+    }
+
+    .sheet-body {
+      padding: 18px 20px;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+      flex: 1;
+    }
+
+    .settings-card {
+      background: #14151D;
+      border: 1px solid #22232E;
+      border-radius: 16px;
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+    .section-headline {
+      font-size: 11px;
+      font-weight: 800;
+      color: #FFB326;
+      letter-spacing: 0.5px;
+      font-family: 'Courier New', monospace;
+      margin-bottom: 2px;
+    }
+
+    .control-row {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    .control-label {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 12px;
+      font-weight: 600;
+      color: #DDD;
+    }
+    .val-badge {
+      background: #20212C;
+      color: #FFB326;
+      font-size: 11px;
+      font-weight: 700;
+      font-family: 'Courier New', monospace;
+      padding: 2px 8px;
+      border-radius: 6px;
+    }
+    .control-desc {
+      font-size: 10px;
+      color: #888898;
+      line-height: 1.3;
+    }
+
+    .control-row input[type="range"] {
+      accent-color: #FFB326;
+      height: 6px;
+      border-radius: 3px;
+      cursor: pointer;
+    }
+
+    .switch-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .switch-label-group {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      padding-right: 12px;
+    }
+    .switch-title {
+      font-size: 12px;
+      font-weight: 600;
+      color: #DDD;
+    }
+
+    .toggle-switch {
+      position: relative;
+      width: 44px;
+      height: 24px;
+      flex-shrink: 0;
+    }
+    .toggle-switch input {
+      opacity: 0;
+      width: 0;
+      height: 0;
+    }
+    .toggle-slider {
+      position: absolute;
+      cursor: pointer;
+      inset: 0;
+      background: #262734;
+      border-radius: 24px;
+      transition: 0.2s;
+    }
+    .toggle-slider:before {
+      position: absolute;
+      content: "";
+      height: 18px;
+      width: 18px;
+      left: 3px;
+      bottom: 3px;
+      background: #888898;
+      border-radius: 50%;
+      transition: 0.2s;
+    }
+    .toggle-switch input:checked + .toggle-slider {
+      background: #4A3E20;
+    }
+    .toggle-switch input:checked + .toggle-slider:before {
+      transform: translateX(20px);
+      background: #FFB326;
+    }
+
+    /* Rich Camcorder Model Card */
+    .camera-model-card {
+      background: #14151D;
+      border: 1.5px solid #22232E;
+      border-radius: 16px;
+      padding: 14px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+    .camera-model-card:hover {
+      border-color: #3C3D4D;
+      background: #181924;
+    }
+    .camera-model-card.active {
+      background: rgba(255, 179, 38, 0.14);
+      border-color: #FFB326;
+    }
+    .camera-card-left {
+      display: flex;
+      gap: 12px;
+      align-items: center;
+    }
+    .camera-icon-badge {
+      width: 44px;
+      height: 44px;
+      border-radius: 12px;
+      background: #1E1F2A;
+      border: 1px solid #2C2D3C;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 22px;
+    }
+    .camera-model-card.active .camera-icon-badge {
+      border-color: #FFB326;
+      background: #2A2414;
+    }
+    .camera-name {
+      font-size: 13px;
+      font-weight: 800;
+      color: #FFF;
+      font-family: 'Courier New', monospace;
+    }
+    .camera-model-card.active .camera-name {
+      color: #FFB326;
+    }
+    .camera-desc {
+      font-size: 10px;
+      color: #888898;
+      margin-top: 3px;
+    }
+    .camera-tag {
+      font-size: 9px;
+      font-weight: 700;
+      color: #AAA;
+      background: #1E1F2A;
+      padding: 2px 6px;
+      border-radius: 4px;
+      display: inline-block;
+      margin-top: 4px;
+    }
+    .camera-card-check {
+      font-size: 16px;
+      color: #FFB326;
+      font-weight: bold;
+      display: none;
+    }
+    .camera-model-card.active .camera-card-check {
+      display: block;
+    }
+
+    .sheet-footer {
+      padding: 14px 20px;
+      border-top: 1px solid #20212C;
+      background: #14151C;
+      flex-shrink: 0;
+    }
+    .apply-return-btn {
+      width: 100%;
+      height: 44px;
+      background: #FFB326;
+      border: none;
+      border-radius: 12px;
+      color: #000;
+      font-family: 'Courier New', monospace;
+      font-weight: 800;
+      font-size: 12px;
+      letter-spacing: 0.5px;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+    .apply-return-btn:hover {
+      background: #FFA000;
+    }
+
+    #helper-banner {
+      margin-top: 14px;
+      color: #666;
+      font-size: 12px;
+      text-align: center;
+    }
+    #helper-banner strong {
+      color: #FFB326;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Phone Chassis Container -->
+  <div id="phone-chassis">
+
+    <!-- 1. TOP MINIMAL BAR -->
+    <div id="top-bar">
+      <div class="brand-title">
+        <span class="logo">RETROCAM</span>
+        <span class="badge" id="btn-tape-status">DV-60</span>
+      </div>
+
+      <div class="top-actions">
+        <button class="icon-action-btn" id="btn-toggle-flash" title="Flash">⚡</button>
+        <button class="icon-action-btn" id="btn-flip-lens" title="Flip Camera">🔄</button>
+        <button class="icon-action-btn" id="btn-open-settings" title="Settings">⚙️</button>
+      </div>
+    </div>
+
+    <!-- 2. VIEWFINDER SCREEN -->
+    <div id="viewfinder-container">
+      <div id="video-wrapper">
+        <video id="webcam-video" autoplay playsinline muted></video>
+        <canvas id="canvas-feed" style="display:none;"></canvas>
+      </div>
+
+      <div id="letterbox-top" class="letterbox-matte"></div>
+      <div id="letterbox-bottom" class="letterbox-matte"></div>
+      <div id="scanlines"></div>
+      <canvas id="grain-canvas"></canvas>
+      <div id="rec-pulse-border"></div>
+      <div id="shutter-flash"></div>
+
+      <!-- TAP-TO-FOCUS & CONTRAST/EXPOSURE SLIDER -->
+      <div id="focus-container">
+        <div class="focus-reticle-box">
+          <span class="focus-cross">+</span>
+        </div>
+
+        <div class="focus-slider-rail" id="focus-exposure-rail">
+          <span class="slider-sun">☀️</span>
+          <div class="slider-track" id="slider-track-el">
+            <div class="slider-thumb" id="slider-thumb-el"></div>
+          </div>
+          <span class="slider-val" id="slider-ev-val">0.0</span>
+        </div>
+      </div>
+
+      <!-- FLOATING MINIMAL OSD -->
+      <div id="floating-hud">
+        <div class="hud-row-top">
+          <div class="hud-status-chip" id="chip-rec-status">
+            <span class="hud-dot-stby" id="hud-indicator-dot"></span>
+            <span class="hud-text" id="hud-status-text">STBY</span>
+            <span class="hud-text" id="hud-timecode" style="color:#FFF; margin-left:4px;">00:00:00</span>
+          </div>
+
+          <div class="hud-tag" id="hud-aspect-tag">1.35x SQUISH</div>
+        </div>
+
+        <div class="hud-row-bottom">
+          <div class="hud-info-group">
+            <span class="hud-date" id="hud-date-text">OCT 31 1999</span>
+          </div>
+          <div class="hud-tag" id="hud-preset-tag" title="Click to Change Camcorder">📹 SONY 90s ▾</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 3. SPACIOUS CONTROLS PANEL (Clean, No Middle Carousel) -->
+    <div id="controls-container">
+      <div class="quick-toggles-row">
+        <!-- Prominent Button taking user to Camera Selector Page -->
+        <button class="pill-btn camera-select-pill" id="btn-open-camera-selector">📹 SONY 90s ▾</button>
+        <button class="pill-btn" id="btn-toggle-aspect">RATIO: 1.35x</button>
+        <button class="pill-btn" id="btn-toggle-year">YEAR: 1999</button>
+      </div>
+
+      <div class="main-deck-row">
+        <div class="zoom-unit">
+          <span class="zoom-indicator" id="zoom-indicator-text">1.0x</span>
+          <div class="zoom-pill">
+            <button class="zoom-step-btn" id="btn-zoom-w">W</button>
+            <button class="zoom-step-btn" id="btn-zoom-t">T</button>
+          </div>
+        </div>
+
+        <div class="shutter-ring" id="main-shutter">
+          <div class="shutter-core-photo" id="shutter-center"></div>
+        </div>
+
+        <div class="deck-right-unit">
+          <div class="mode-pill-toggle">
+            <button class="mode-option-btn active" id="btn-mode-photo">PHOTO</button>
+            <button class="mode-option-btn" id="btn-mode-video">VIDEO</button>
+          </div>
+          <div class="gallery-preview-btn" id="btn-open-gallery" title="Gallery">
+            🎞️
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 4. DEDICATED CAMERA SELECTOR PAGE MODAL -->
+    <div class="sheet-overlay" id="camera-selector-sheet">
+      <div class="sheet-card">
+        <div class="sheet-handle-bar"></div>
+        
+        <div class="sheet-header">
+          <div class="sheet-title-group">
+            <span style="font-size:16px;">📹</span>
+            <span class="sheet-title">CAMCORDER GEAR CATALOG</span>
+          </div>
+          <button class="sheet-close-btn" id="btn-close-cam-selector">✕</button>
+        </div>
+
+        <div class="sheet-body">
+          <div style="font-size:11px; color:#888898; margin-bottom:4px;">SELECT RETRO OPTICAL BODY & SENSOR:</div>
+
+          <!-- 6 Vintage Camcorder Models -->
+          <div class="camera-model-card active" data-preset="SONY_90S">
+            <div class="camera-card-left">
+              <div class="camera-icon-badge">⭐</div>
+              <div>
+                <div class="camera-name">SONY CCD-TRV65 (1999)</div>
+                <div class="camera-desc">Warm punchy reds, golden skin tones, milky lifted blacks</div>
+                <span class="camera-tag">CCD 640x &bull; PHOSPHOR AMBER</span>
+              </div>
+            </div>
+            <div class="camera-card-check">✓</div>
+          </div>
+
+          <div class="camera-model-card" data-preset="MINI_DV">
+            <div class="camera-card-left">
+              <div class="camera-icon-badge">📼</div>
+              <div>
+                <div class="camera-name">PANASONIC NV-GS400 (2002)</div>
+                <div class="camera-desc">Clean highlights, cyan/teal shadows, Y2K digital camcorder feel</div>
+                <span class="camera-tag">MINIDV 720x480 &bull; CYBER CYAN</span>
+              </div>
+            </div>
+            <div class="camera-card-check">✓</div>
+          </div>
+
+          <div class="camera-model-card" data-preset="HI8_TAPE">
+            <div class="camera-card-left">
+              <div class="camera-icon-badge">📹</div>
+              <div>
+                <div class="camera-name">JVC GR-AXM10 HI-8 (1994)</div>
+                <div class="camera-desc">Saturated analogue tape, warm amber tones, softened detail</div>
+                <span class="camera-tag">ANALOGUE TAPE &bull; VINTAGE AMBER</span>
+              </div>
+            </div>
+            <div class="camera-card-check">✓</div>
+          </div>
+
+          <div class="camera-model-card" data-preset="SKATE_DV">
+            <div class="camera-card-left">
+              <div class="camera-icon-badge">🛹</div>
+              <div>
+                <div class="camera-name">SONY DCR-VX1000 (1998)</div>
+                <div class="camera-desc">High-contrast anamorphic street look, 90s skate video standard</div>
+                <span class="camera-tag">ANAMORPHIC SQUEEZE &bull; ELECTRIC GREEN</span>
+              </div>
+            </div>
+            <div class="camera-card-check">✓</div>
+          </div>
+
+          <div class="camera-model-card" data-preset="NIGHTSHOT">
+            <div class="camera-card-left">
+              <div class="camera-icon-badge">🌙</div>
+              <div>
+                <div class="camera-name">HANDYCAM NIGHTSHOT (2000)</div>
+                <div class="camera-desc">0-Lux infrared night-vision simulation with phosphor green glow</div>
+                <span class="camera-tag">0-LUX IR &bull; NEON GREEN</span>
+              </div>
+            </div>
+            <div class="camera-card-check">✓</div>
+          </div>
+
+          <div class="camera-model-card" data-preset="BW_CCTV">
+            <div class="camera-card-left">
+              <div class="camera-icon-badge">⬛</div>
+              <div>
+                <div class="camera-name">SECURITY CCD MONITOR (1995)</div>
+                <div class="camera-desc">High-contrast monochrome surveillance sensor with heavy grain</div>
+                <span class="camera-tag">B&W 4:3 &bull; VCR WHITE</span>
+              </div>
+            </div>
+            <div class="camera-card-check">✓</div>
+          </div>
+        </div>
+
+        <div class="sheet-footer">
+          <button class="apply-return-btn" id="btn-equip-camera">EQUIP & RETURN TO VIEWFINDER</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 5. REVAMPED SLIDE-UP SETTINGS DRAWER (6 Tabs) -->
+    <div class="sheet-overlay" id="settings-sheet">
+      <div class="sheet-card">
+        <div class="sheet-handle-bar"></div>
+        
+        <div class="sheet-header">
+          <div class="sheet-title-group">
+            <div class="sheet-title-dot"></div>
+            <span class="sheet-title">CALIBRATION & SETTINGS</span>
+          </div>
+          <div class="sheet-actions">
+            <button class="btn-reset" id="btn-reset-defaults">RESET</button>
+            <button class="sheet-close-btn" id="btn-close-settings">✕</button>
+          </div>
+        </div>
+
+        <div class="sheet-tabs-nav">
+          <button class="nav-tab-pill active" data-tab="OPTICS">📐 OPTICS</button>
+          <button class="nav-tab-pill" data-tab="SENSOR">⚡ SENSOR</button>
+          <button class="nav-tab-pill" data-tab="ARTIFACTS">🎞️ ARTIFACTS</button>
+          <button class="nav-tab-pill" data-tab="COLOR">🎨 COLOR</button>
+          <button class="nav-tab-pill" data-tab="OSD">📟 HUD & OSD</button>
+          <button class="nav-tab-pill" data-tab="AUDIO">🔊 AUDIO</button>
+        </div>
+
+        <div class="sheet-body" id="sheet-body-content"></div>
+
+        <div class="sheet-footer">
+          <button class="apply-return-btn" id="btn-sheet-apply">APPLY & RETURN TO VIEWFINDER</button>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <div id="helper-banner">
+    <strong>RETROCAM GEAR SELECTOR</strong> &bull; Click <strong>📹 SONY 90s ▾</strong> to browse vintage camcorders &bull; Click ⚙️ for Settings
+  </div>
+
+  <script>
+    const app = {
+      squish: 1.35,
+      vignette: 0.35,
+      letterbox: true,
+      fpsCadence: 'MINIDV_24',
+      rawNoise: true,
+      softEdges: true,
+      chromaNoise: 0.60,
+      grain: 0.60,
+      scanlines: 0.35,
+      bloom: 0.45,
+      chromaAberration: 0.50,
+      tapeJitter: true,
+      tapeWrinkle: true,
+      preset: 'SONY_90S',
+      osdColor: '#FFB326',
+      year: 1999,
+      showBattery: true,
+      showTimecode: true,
+      showReticle: true,
+      showDate: true,
+      burnPhotos: true,
+      burnVideos: true,
+      lowPass: true,
+      tapeHum: false,
+      haptics: true,
+      zoom: 1.0,
+      exposureEv: 0.0,
+      mode: 'PHOTO',
+      isRecording: false,
+      recordingSec: 0,
+      recTimer: null,
+      flashOn: false
+    };
+
+    const presets = {
+      SONY_90S: {
+        shortName: 'SONY 90s',
+        name: 'SONY CCD 1999',
+        squish: 1.35,
+        scanlines: 0.35,
+        grain: 0.60,
+        osdColor: '#FFB326',
+        year: 1999,
+        baseFilter: 'sepia(0.3) saturate(1.35) contrast(1.1) hue-rotate(-8deg)'
+      },
+      MINI_DV: {
+        shortName: 'MINI-DV',
+        name: 'PANASONIC MINIDV',
+        squish: 1.25,
+        scanlines: 0.20,
+        grain: 0.40,
+        osdColor: '#00E5FF',
+        year: 2002,
+        baseFilter: 'saturate(1.2) contrast(1.15) hue-rotate(10deg)'
+      },
+      HI8_TAPE: {
+        shortName: 'HI-8 TAPE',
+        name: 'JVC HI-8 TAPE',
+        squish: 1.35,
+        scanlines: 0.45,
+        grain: 0.70,
+        osdColor: '#FFB326',
+        year: 1994,
+        baseFilter: 'sepia(0.35) saturate(1.5) contrast(1.2) hue-rotate(-15deg)'
+      },
+      SKATE_DV: {
+        shortName: 'SKATE DV',
+        name: 'SKATE DV ANAMORPHIC',
+        squish: 1.48,
+        scanlines: 0.30,
+        grain: 0.65,
+        osdColor: '#00FF66',
+        year: 1998,
+        baseFilter: 'saturate(1.25) contrast(1.2)'
+      },
+      NIGHTSHOT: {
+        shortName: 'NIGHTSHOT',
+        name: '0-LUX NIGHTSHOT',
+        squish: 1.30,
+        scanlines: 0.40,
+        grain: 0.80,
+        osdColor: '#00FF66',
+        year: 2000,
+        baseFilter: 'sepia(0.1) saturate(1.8) hue-rotate(50deg) brightness(1.15)'
+      },
+      BW_CCTV: {
+        shortName: 'B&W CCTV',
+        name: 'B&W SURVEILLANCE',
+        squish: 1.33,
+        scanlines: 0.55,
+        grain: 0.85,
+        osdColor: '#EEEEEE',
+        year: 1995,
+        baseFilter: 'grayscale(1) contrast(1.5) brightness(0.95)'
+      }
+    };
+
+    // 1. WEBCAM FEED
+    const video = document.getElementById('webcam-video');
+    const canvasFeed = document.getElementById('canvas-feed');
+    const ctxFeed = canvasFeed.getContext('2d');
+
+    navigator.mediaDevices?.getUserMedia({ video: { width: 1280, height: 720 }, audio: false })
+      .then(stream => { video.srcObject = stream; })
+      .catch(() => {
+        video.style.display = 'none';
+        canvasFeed.style.display = 'block';
+        startSimulation();
+      });
+
+    function startSimulation() {
+      canvasFeed.width = 640;
+      canvasFeed.height = 480;
+      let tick = 0;
+      function loop() {
+        tick++;
+        ctxFeed.fillStyle = '#101016';
+        ctxFeed.fillRect(0, 0, 640, 480);
+
+        const grad = ctxFeed.createLinearGradient(0, 0, 640, 480);
+        grad.addColorStop(0, '#261b42');
+        grad.addColorStop(0.5, '#4f1a35');
+        grad.addColorStop(1, '#82461a');
+        ctxFeed.fillStyle = grad;
+        ctxFeed.fillRect(40, 30, 560, 400);
+
+        ctxFeed.beginPath();
+        const sunY = 220 + Math.sin(tick * 0.03) * 12;
+        ctxFeed.arc(320, sunY, 70, 0, Math.PI * 2);
+        ctxFeed.fillStyle = '#ffb326';
+        ctxFeed.shadowColor = '#ff5500';
+        ctxFeed.shadowBlur = 24;
+        ctxFeed.fill();
+        ctxFeed.shadowBlur = 0;
+
+        requestAnimationFrame(loop);
+      }
+      loop();
+    }
+
+    // 2. GRAIN CANVAS
+    const grainCanvas = document.getElementById('grain-canvas');
+    const gCtx = grainCanvas.getContext('2d');
+    function resizeGrain() {
+      grainCanvas.width = grainCanvas.offsetWidth || 400;
+      grainCanvas.height = grainCanvas.offsetHeight || 500;
+    }
+    resizeGrain();
+    window.addEventListener('resize', resizeGrain);
+
+    const noiseColors = ['rgba(255,59,48,0.22)', 'rgba(50,173,230,0.22)', 'rgba(255,214,10,0.22)', 'rgba(255,255,255,0.25)', 'rgba(0,0,0,0.25)'];
+    function renderGrain() {
+      if (app.grain > 0.05) {
+        gCtx.clearRect(0, 0, grainCanvas.width, grainCanvas.height);
+        const count = Math.floor(160 * app.grain);
+        for (let i = 0; i < count; i++) {
+          const x = Math.random() * grainCanvas.width;
+          const y = Math.random() * grainCanvas.height;
+          gCtx.fillStyle = noiseColors[Math.floor(Math.random() * noiseColors.length)];
+          gCtx.beginPath();
+          gCtx.arc(x, y, Math.random() * 1.6 + 0.6, 0, Math.PI * 2);
+          gCtx.fill();
+        }
+      }
+      requestAnimationFrame(renderGrain);
+    }
+    renderGrain();
+
+    // 3. APPLY COMPOSITE FILTERS
+    function updateFiltersAndTransform() {
+      const curPreset = presets[app.preset] || presets.SONY_90S;
+      const brightnessMultiplier = 1.0 + (app.exposureEv * 0.25);
+      const contrastMultiplier = 1.0 + (app.exposureEv * 0.15);
+
+      const fullFilter = `${curPreset.baseFilter} brightness(${brightnessMultiplier.toFixed(2)}) contrast(${contrastMultiplier.toFixed(2)})`;
+      video.style.filter = fullFilter;
+      canvasFeed.style.filter = fullFilter;
+
+      const feed = document.getElementById('video-wrapper');
+      feed.style.transform = `scaleY(${1 / app.squish}) scaleX(${app.zoom})`;
+
+      const matteH = app.letterbox ? Math.max(20, (app.squish - 1.0) * 70) : 0;
+      document.getElementById('letterbox-top').style.height = `${matteH}px`;
+      document.getElementById('letterbox-bottom').style.height = `${matteH}px`;
+
+      document.getElementById('scanlines').style.opacity = app.scanlines;
+      document.getElementById('zoom-indicator-text').innerText = `${app.zoom.toFixed(1)}x`;
+      document.getElementById('hud-preset-tag').innerText = `📹 ${curPreset.shortName} ▾`;
+      document.getElementById('btn-open-camera-selector').innerText = `📹 ${curPreset.shortName} ▾`;
+      document.getElementById('hud-aspect-tag').innerText = `${app.squish.toFixed(2)}x SQUISH`;
+      document.getElementById('floating-hud').style.color = app.osdColor;
+      document.getElementById('hud-date-text').style.color = app.osdColor;
+    }
+
+    // 4. TAP TO FOCUS & EXPOSURE
+    const vContainer = document.getElementById('viewfinder-container');
+    const fContainer = document.getElementById('focus-container');
+    const fRail = document.getElementById('focus-exposure-rail');
+    const fThumb = document.getElementById('slider-thumb-el');
+    const fEvVal = document.getElementById('slider-ev-val');
+
+    let focusDismissTimeout = null;
+    let isDraggingSlider = false;
+    let startY = 0;
+    let startEv = 0;
+
+    function resetFocusTimeout() {
+      clearTimeout(focusDismissTimeout);
+      focusDismissTimeout = setTimeout(() => {
+        if (!isDraggingSlider) {
+          fContainer.style.opacity = '0';
+          setTimeout(() => { if (!isDraggingSlider) fContainer.style.display = 'none'; }, 300);
+        }
+      }, 3500);
+    }
+
+    vContainer.addEventListener('pointerdown', (e) => {
+      if (e.target.closest('#focus-exposure-rail') || e.target.closest('#floating-hud')) return;
+
+      const rect = vContainer.getBoundingClientRect();
+      const x = e.clientX - rect.left;
+      const y = e.clientY - rect.top;
+
+      fContainer.style.display = 'block';
+      fContainer.style.opacity = '1';
+      fContainer.style.left = `${x}px`;
+      fContainer.style.top = `${y}px`;
+
+      if (x > rect.width - 110) {
+        fRail.style.left = '-42px';
+      } else {
+        fRail.style.left = '76px';
+      }
+
+      syncSliderThumb();
+      resetFocusTimeout();
+    });
+
+    fRail.addEventListener('pointerdown', (e) => {
+      e.stopPropagation();
+      isDraggingSlider = true;
+      startY = e.clientY;
+      startEv = app.exposureEv;
+      fRail.setPointerCapture(e.pointerId);
+      clearTimeout(focusDismissTimeout);
+    });
+
+    fRail.addEventListener('pointermove', (e) => {
+      if (!isDraggingSlider) return;
+      e.stopPropagation();
+
+      const deltaY = startY - e.clientY;
+      const evChange = (deltaY / 40);
+      let newEv = Math.round((startEv + evChange) * 2) / 2;
+      newEv = Math.max(-2.0, Math.min(2.0, newEv));
+
+      if (newEv !== app.exposureEv) {
+        app.exposureEv = newEv;
+        syncSliderThumb();
+        updateFiltersAndTransform();
+      }
+    });
+
+    function endSliderDrag(e) {
+      if (isDraggingSlider) {
+        isDraggingSlider = false;
+        try { fRail.releasePointerCapture(e.pointerId); } catch (_) {}
+        resetFocusTimeout();
+      }
+    }
+    fRail.addEventListener('pointerup', endSliderDrag);
+    fRail.addEventListener('pointercancel', endSliderDrag);
+
+    function syncSliderThumb() {
+      const normalized = (app.exposureEv + 2.0) / 4.0;
+      const percent = (1.0 - normalized) * 100;
+      fThumb.style.top = `${percent}%`;
+      fEvVal.innerText = (app.exposureEv > 0 ? `+${app.exposureEv.toFixed(1)}` : app.exposureEv.toFixed(1));
+    }
+
+    // 5. ZOOM ROCKER
+    document.getElementById('btn-zoom-t').addEventListener('click', () => {
+      app.zoom = Math.min(5.0, Math.round((app.zoom + 0.5) * 10) / 10);
+      updateFiltersAndTransform();
+    });
+    document.getElementById('btn-zoom-w').addEventListener('click', () => {
+      app.zoom = Math.max(1.0, Math.round((app.zoom - 0.5) * 10) / 10);
+      updateFiltersAndTransform();
+    });
+
+    // 6. SHUTTER & RECORDING
+    const shutter = document.getElementById('main-shutter');
+    const shutterCore = document.getElementById('shutter-center');
+    const recBorder = document.getElementById('rec-pulse-border');
+    const flashEl = document.getElementById('shutter-flash');
+
+    function toggleVideoRecording() {
+      app.isRecording = !app.isRecording;
+      const dot = document.getElementById('hud-indicator-dot');
+      const statusText = document.getElementById('hud-status-text');
+
+      if (app.isRecording) {
+        app.recordingSec = 0;
+        dot.className = 'hud-dot-rec';
+        statusText.innerText = 'REC';
+        statusText.style.color = '#FF2E2E';
+        recBorder.style.display = 'block';
+        shutterCore.classList.add('recording');
+
+        app.recTimer = setInterval(() => {
+          app.recordingSec++;
+          const m = String(Math.floor(app.recordingSec / 60)).padStart(2, '0');
+          const s = String(app.recordingSec % 60).padStart(2, '0');
+          document.getElementById('hud-timecode').innerText = `00:${m}:${s}`;
+        }, 1000);
+      } else {
+        clearInterval(app.recTimer);
+        dot.className = 'hud-dot-stby';
+        statusText.innerText = 'STBY';
+        statusText.style.color = '#00E676';
+        recBorder.style.display = 'none';
+        shutterCore.classList.remove('recording');
+        document.getElementById('hud-timecode').innerText = '00:00:00';
+      }
+    }
+
+    shutter.addEventListener('click', () => {
+      if (app.mode === 'PHOTO') {
+        flashEl.style.opacity = '1';
+        setTimeout(() => flashEl.style.opacity = '0', 100);
+      } else {
+        toggleVideoRecording();
+      }
+    });
+
+    // 7. MODE SWITCH
+    const btnPhoto = document.getElementById('btn-mode-photo');
+    const btnVideo = document.getElementById('btn-mode-video');
+
+    btnPhoto.addEventListener('click', () => {
+      app.mode = 'PHOTO';
+      btnPhoto.classList.add('active');
+      btnVideo.classList.remove('active');
+      shutterCore.className = 'shutter-core-photo';
+      if (app.isRecording) toggleVideoRecording();
+    });
+
+    btnVideo.addEventListener('click', () => {
+      app.mode = 'VIDEO';
+      btnVideo.classList.add('active');
+      btnPhoto.classList.remove('active');
+      shutterCore.className = 'shutter-core-video';
+    });
+
+    // 8. DEDICATED CAMERA SELECTOR MODAL LOGIC
+    const camSheet = document.getElementById('camera-selector-sheet');
+    function openCameraSelector() {
+      camSheet.style.display = 'flex';
+      // sync active card
+      document.querySelectorAll('.camera-model-card').forEach(card => {
+        card.classList.toggle('active', card.getAttribute('data-preset') === app.preset);
+      });
+    }
+
+    document.getElementById('btn-open-camera-selector').addEventListener('click', openCameraSelector);
+    document.getElementById('hud-preset-tag').addEventListener('click', openCameraSelector);
+    document.getElementById('btn-close-cam-selector').addEventListener('click', () => camSheet.style.display = 'none');
+    document.getElementById('btn-equip-camera').addEventListener('click', () => camSheet.style.display = 'none');
+    camSheet.addEventListener('click', (e) => {
+      if (e.target === camSheet) camSheet.style.display = 'none';
+    });
+
+    // Card Selection
+    document.querySelectorAll('.camera-model-card').forEach(card => {
+      card.addEventListener('click', () => {
+        document.querySelectorAll('.camera-model-card').forEach(c => c.classList.remove('active'));
+        card.classList.add('active');
+        const pKey = card.getAttribute('data-preset');
+        app.preset = pKey;
+        const p = presets[pKey];
+        if (p) {
+          app.squish = p.squish;
+          app.scanlines = p.scanlines;
+          app.grain = p.grain;
+          app.osdColor = p.osdColor;
+          app.year = p.year;
+          document.getElementById('hud-date-text').innerText = `OCT 31 ${app.year}`;
+          document.getElementById('btn-toggle-year').innerText = `YEAR: ${app.year}`;
+          document.getElementById('btn-toggle-aspect').innerText = `RATIO: ${app.squish.toFixed(2)}x`;
+        }
+        updateFiltersAndTransform();
+        setTimeout(() => { camSheet.style.display = 'none'; }, 200);
+      });
+    });
+
+    // Quick Pill Toggles
+    document.getElementById('btn-toggle-aspect').addEventListener('click', () => {
+      app.squish = app.squish >= 1.5 ? 1.0 : +(app.squish + 0.15).toFixed(2);
+      document.getElementById('btn-toggle-aspect').innerText = `RATIO: ${app.squish.toFixed(2)}x`;
+      updateFiltersAndTransform();
+    });
+
+    document.getElementById('btn-toggle-year').addEventListener('click', () => {
+      const years = [1994, 1998, 1999, 2002, 2026];
+      const nextIdx = (years.indexOf(app.year) + 1) % years.length;
+      app.year = years[nextIdx];
+      document.getElementById('btn-toggle-year').innerText = `YEAR: ${app.year}`;
+      document.getElementById('hud-date-text').innerText = `OCT 31 ${app.year}`;
+    });
+
+    document.getElementById('btn-toggle-flash').addEventListener('click', () => {
+      app.flashOn = !app.flashOn;
+      document.getElementById('btn-toggle-flash').style.color = app.flashOn ? '#FFB326' : '#8E8E98';
+    });
+
+    let isFlipped = false;
+    document.getElementById('btn-flip-lens').addEventListener('click', () => {
+      isFlipped = !isFlipped;
+      video.style.transform = isFlipped ? 'scaleX(-1)' : 'none';
+      canvasFeed.style.transform = isFlipped ? 'scaleX(-1)' : 'none';
+    });
+
+    // 9. SETTINGS SHEET LOGIC
+    let currentTab = 'OPTICS';
+    const sheetOverlay = document.getElementById('settings-sheet');
+    const sheetBody = document.getElementById('sheet-body-content');
+
+    document.getElementById('btn-open-settings').addEventListener('click', () => {
+      sheetOverlay.style.display = 'flex';
+      renderSettingsBody();
+    });
+    document.getElementById('btn-close-settings').addEventListener('click', () => sheetOverlay.style.display = 'none');
+    document.getElementById('btn-sheet-apply').addEventListener('click', () => sheetOverlay.style.display = 'none');
+    sheetOverlay.addEventListener('click', (e) => {
+      if (e.target === sheetOverlay) sheetOverlay.style.display = 'none';
+    });
+
+    document.getElementById('btn-reset-defaults').addEventListener('click', () => {
+      app.squish = 1.35;
+      app.vignette = 0.35;
+      app.letterbox = true;
+      app.fpsCadence = 'MINIDV_24';
+      app.rawNoise = true;
+      app.softEdges = true;
+      app.chromaNoise = 0.60;
+      app.grain = 0.60;
+      app.scanlines = 0.35;
+      app.bloom = 0.45;
+      app.chromaAberration = 0.50;
+      app.preset = 'SONY_90S';
+      app.osdColor = '#FFB326';
+      app.year = 1999;
+      updateFiltersAndTransform();
+      renderSettingsBody();
+    });
+
+    document.querySelectorAll('.nav-tab-pill').forEach(pill => {
+      pill.addEventListener('click', () => {
+        document.querySelectorAll('.nav-tab-pill').forEach(p => p.classList.remove('active'));
+        pill.classList.add('active');
+        currentTab = pill.getAttribute('data-tab');
+        renderSettingsBody();
+      });
+    });
+
+    function renderSettingsBody() {
+      switch(currentTab) {
+        case 'OPTICS':
+          sheetBody.innerHTML = `
+            <div class="settings-card">
+              <div class="section-headline">ANAMORPHIC SQUEEZE & RATIO</div>
+              <div class="control-row">
+                <div class="control-label">
+                  <span>Vertical Squish Ratio</span>
+                  <span class="val-badge" id="val-squish">${app.squish.toFixed(2)}x</span>
+                </div>
+                <input type="range" min="1.0" max="1.65" step="0.05" value="${app.squish}" id="inp-squish">
+              </div>
+              <div class="control-row">
+                <div class="control-label">
+                  <span>Lens Vignette Falloff</span>
+                  <span class="val-badge" id="val-vignette">${Math.round(app.vignette * 100)}%</span>
+                </div>
+                <input type="range" min="0" max="0.8" step="0.05" value="${app.vignette}" id="inp-vignette">
+              </div>
+              <div class="switch-row">
+                <span class="switch-title">Cinematic Letterbox Mattes</span>
+                <label class="toggle-switch">
+                  <input type="checkbox" id="inp-letterbox" ${app.letterbox ? 'checked' : ''}>
+                  <span class="toggle-slider"></span>
+                </label>
+              </div>
+            </div>
+          `;
+          document.getElementById('inp-squish').addEventListener('input', e => {
+            app.squish = parseFloat(e.target.value);
+            document.getElementById('val-squish').innerText = `${app.squish.toFixed(2)}x`;
+            updateFiltersAndTransform();
+          });
+          document.getElementById('inp-vignette').addEventListener('input', e => {
+            app.vignette = parseFloat(e.target.value);
+            document.getElementById('val-vignette').innerText = `${Math.round(app.vignette * 100)}%`;
+          });
+          document.getElementById('inp-letterbox').addEventListener('change', e => {
+            app.letterbox = e.target.checked;
+            updateFiltersAndTransform();
+          });
+          break;
+
+        case 'SENSOR':
+          sheetBody.innerHTML = `
+            <div class="settings-card">
+              <div class="section-headline">SHUTTER CADENCE & FPS RATE</div>
+              <div class="switch-row">
+                <span class="switch-title">Bypass Computational Denoising</span>
+                <label class="toggle-switch">
+                  <input type="checkbox" id="inp-rawnoise" ${app.rawNoise ? 'checked' : ''}>
+                  <span class="toggle-slider"></span>
+                </label>
+              </div>
+              <div class="switch-row">
+                <span class="switch-title">Bypass Digital Edge Sharpening</span>
+                <label class="toggle-switch">
+                  <input type="checkbox" id="inp-softedges" ${app.softEdges ? 'checked' : ''}>
+                  <span class="toggle-slider"></span>
+                </label>
+              </div>
+            </div>
+          `;
+          document.getElementById('inp-rawnoise').addEventListener('change', e => app.rawNoise = e.target.checked);
+          document.getElementById('inp-softedges').addEventListener('change', e => app.softEdges = e.target.checked);
+          break;
+
+        case 'ARTIFACTS':
+          sheetBody.innerHTML = `
+            <div class="settings-card">
+              <div class="section-headline">CCD SENSOR NOISE & GRAIN</div>
+              <div class="control-row">
+                <div class="control-label">
+                  <span>RGB Chroma Noise</span>
+                  <span class="val-badge">${Math.round(app.chromaNoise * 100)}%</span>
+                </div>
+                <input type="range" min="0" max="1" step="0.05" value="${app.chromaNoise}" id="inp-cnoise">
+              </div>
+              <div class="control-row">
+                <div class="control-label">
+                  <span>Luminance Micro-Grain</span>
+                  <span class="val-badge" id="val-grain">${Math.round(app.grain * 100)}%</span>
+                </div>
+                <input type="range" min="0" max="1" step="0.05" value="${app.grain}" id="inp-grain">
+              </div>
+              <div class="control-row">
+                <div class="control-label">
+                  <span>CRT Scanlines Opacity</span>
+                  <span class="val-badge" id="val-scanlines">${Math.round(app.scanlines * 100)}%</span>
+                </div>
+                <input type="range" min="0" max="0.8" step="0.05" value="${app.scanlines}" id="inp-scanlines">
+              </div>
+            </div>
+          `;
+          document.getElementById('inp-grain').addEventListener('input', e => {
+            app.grain = parseFloat(e.target.value);
+            document.getElementById('val-grain').innerText = `${Math.round(app.grain * 100)}%`;
+            updateFiltersAndTransform();
+          });
+          document.getElementById('inp-scanlines').addEventListener('input', e => {
+            app.scanlines = parseFloat(e.target.value);
+            document.getElementById('val-scanlines').innerText = `${Math.round(app.scanlines * 100)}%`;
+            updateFiltersAndTransform();
+          });
+          break;
+
+        case 'COLOR':
+          sheetBody.innerHTML = `
+            <div class="settings-card">
+              <div class="section-headline">ACTIVE COLOR PROFILE</div>
+              <div style="font-size:12px; color:#FFB326; font-family:'Courier New', monospace; font-weight:bold;">
+                CURRENT: ${presets[app.preset]?.name || 'CUSTOM'}
+              </div>
+              <div style="font-size:11px; color:#888;">Open the Camcorder Gear Catalog on the main screen to change body and color profile.</div>
+            </div>
+          `;
+          break;
+
+        case 'OSD':
+          sheetBody.innerHTML = `
+            <div class="settings-card">
+              <div class="section-headline">HUD & OSD CONFIG</div>
+              <div class="switch-row">
+                <span class="switch-title">Battery Readout [||||]</span>
+                <label class="toggle-switch">
+                  <input type="checkbox" ${app.showBattery ? 'checked' : ''}>
+                  <span class="toggle-slider"></span>
+                </label>
+              </div>
+              <div class="switch-row">
+                <span class="switch-title">Vintage Date Stamp</span>
+                <label class="toggle-switch">
+                  <input type="checkbox" ${app.showDate ? 'checked' : ''}>
+                  <span class="toggle-slider"></span>
+                </label>
+              </div>
+            </div>
+          `;
+          break;
+
+        case 'AUDIO':
+          sheetBody.innerHTML = `
+            <div class="settings-card">
+              <div class="section-headline">AUDIO & SENSORY HAPTICS</div>
+              <div class="switch-row">
+                <span class="switch-title">Camcorder Low-Pass Audio Filter</span>
+                <label class="toggle-switch">
+                  <input type="checkbox" ${app.lowPass ? 'checked' : ''}>
+                  <span class="toggle-slider"></span>
+                </label>
+              </div>
+              <div class="switch-row">
+                <span class="switch-title">Tactile Haptics</span>
+                <label class="toggle-switch">
+                  <input type="checkbox" ${app.haptics ? 'checked' : ''}>
+                  <span class="toggle-slider"></span>
+                </label>
+              </div>
+            </div>
+          `;
+          break;
+      }
+    }
+
+    // Initial setup
+    updateFiltersAndTransform();
+  </script>
+</body>
+</html>

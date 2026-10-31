@@ -1,0 +1,32 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <!-- Main dark background -->
+    <path
+        android:fillColor="#121218"
+        android:pathData="M0,0h108v108h-108z" />
+
+    <!-- Subtle vintage CRT scanline grid texture -->
+    <path
+        android:fillColor="#181822"
+        android:pathData="M0,0h108v4h-108z M0,8h108v4h-108z M0,16h108v4h-108z M0,24h108v4h-108z M0,32h108v4h-108z M0,40h108v4h-108z M0,48h108v4h-108z M0,56h108v4h-108z M0,64h108v4h-108z M0,72h108v4h-108z M0,80h108v4h-108z M0,88h108v4h-108z M0,96h108v4h-108z M0,104h108v4h-108z" />
+
+    <!-- Iconic 90s VHS / Camcorder Rainbow Accent Stripes across upper corner -->
+    <path
+        android:fillColor="#FF2E44"
+        android:pathData="M68,0 L80,0 L108,28 L108,16 Z" />
+    <path
+        android:fillColor="#FF9500"
+        android:pathData="M80,0 L92,0 L108,40 L108,28 Z" />
+    <path
+        android:fillColor="#FFD60A"
+        android:pathData="M92,0 L104,0 L108,52 L108,40 Z" />
+    <path
+        android:fillColor="#30D158"
+        android:pathData="M104,0 L108,0 L108,4 L108,64 L108,52 Z" />
+    <path
+        android:fillColor="#0A84FF"
+        android:pathData="M108,64 L108,76 L108,76 Z" />
+</vector>
